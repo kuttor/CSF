@@ -1,0 +1,49 @@
+---
+dependency:
+  name: galaxy
+  options:
+    role-file: requirements.yml
+driver:
+  name: delegated
+  hostname: 172.16.167.21
+  datacenter: MGMT-STG
+  cluster: MGMT-STG-CL1
+  validate_certs: 'no'
+  folder: '/DevOps'
+  ssh_identity_file: '/Users/michael.rosile/.ssh/id_rsa'
+  options:
+    ansible_connection_options:
+      connection: ssh
+lint:
+  name: yamllint
+platforms:
+  - name: "op01csf98d"
+  - name: "op01csf99d"
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        ansible_user: ansible
+        domain: staging.local
+        ntp_timezone: 'America/New_York'
+        syslog_server: 127.0.0.1
+        vmware_num_cpus: 1
+        vmware_memory_mb: 1024
+        vmware_portgroup: MGMT
+        vmware_template: RHEL7-CIS-Level1_1
+    host_vars:
+      op01csf98d:
+        vmware_template: May2020_T-RHEL-6-64-2-4-20
+      op01csf99d:
+        vmware_template: RHEL7-CIS-Level1_1
+  playbooks:
+    converge: playbook.yml
+  lint:
+    name: ansible-lint
+scenario:
+  name: staging
+verifier:
+  name: testinfra
+  lint:
+    name: flake8

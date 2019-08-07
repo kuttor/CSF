@@ -1,0 +1,30 @@
+---
+# -----------------------------------------------------------------------------
+# name: main.yml
+# about: Main task file for crowdstrike_falcon.
+#
+# task files:
+# - windows.yml
+# - redhat.yml
+# - suse.yml
+# -----------------------------------------------------------------------------
+
+# Import tasks from windows.yml
+- name: Importing tasks from windows.yml ...
+  include_tasks: windows.yml
+  when: ansible_os_family == "Windows"
+
+# Import tasks from redhat.yml
+- name: Importing tasks from redhat.yml ...
+  include_tasks: redhat.yml
+  when: ansible_os_family == "RedHat"
+
+# Import tasks from suse.yml
+- name: Importing tasks from suse.yml ...
+  include_tasks: suse.yml
+  when: ansible_os_family == "Suse"
+
+# Import tasks from debian.yml
+- name: Importing tasks from debian.yml ...
+  include_tasks: debian.yml
+  when: ansible_os_family == "Debian"

@@ -1,0 +1,85 @@
+---
+# -----------------------------------------------------------------------------
+# name: suse.yml
+# about: Tasks for deploying the CrowdStrike Falcon agent on Suse 11 and 12
+#
+# Refs:
+# - https://docs.ansible.com/ansible/2.6/modules/zypper_module.html
+# - https://docs.ansible.com/ansible/2.6/modules/get_url_module.html
+# - https://docs.ansible.com/ansible/2.6/modules/service_module.html
+#
+# Tags:
+# - download_falcon_suse11
+# - download_falcon_suse12
+# - install_rpm_package
+# - start_service
+# - delete_rpm_package
+# -----------------------------------------------------------------------------
+
+# Download the CrowdStrike Falcon agent for Suse 11
+- name: Downloading the CrowdStrike Falcon RPM for Suse 11 ...
+  get_url:
+    url: '{{ csf_suse11.pkg_url }}' # Location of the source package.
+    checksum: '{{ csf_suse11.pkg_checksum }}' # Post transfer file integrity check.
+    dest: /tmp/crowdstrike_falcon.rpm # Final package Destination.
+    mode: 0644 # R+W Owner, R Group, R Other Users.
+    validate_certs: false
+  when: ansible_distribution_major_version == '11'
+  tags: download_falcon_suse11
+
+# Download the CrowdStrike Falcon agent for Suse 12
+- name: Downloading the CrowdStrike Falcon RPM for Suse 12 ...
+  get_url:
+    url: '{{ csf_suse12.pkg_url }}' # Location of the source package.
+    checksum: '{{ csf_suse12.pkg_checksum }}' # Post transfer file integrity check.
+    dest: /tmp/crowdstrike_falcon.rpm # Final package destination.
+    mode: 0644 # R+W Owner, R Group, R Other Users.
+    validate_certs: false
+  when: ansible_distribution_major_version == '12'
+  tags: download_falcon_suse12
+
+# Download the CrowdStrike Falcon agent for Suse 15
+- name: Downloading the CrowdStrike Falcon RPM for Suse 15 ...
+  get_url:
+    url: '{{ csf_suse15.pkg_url }}' # Location of the source package.
+    checksum: '{{ csf_suse15.pkg_checksum }}' # Post transfer file integrity check.
+    dest: /tmp/crowdstrike_falcon.rpm # Final package destination.
+    mode: 0644 # R+W Owner, R Group, R Other Users.
+    validate_certs: false
+  when: ansible_distribution_major_version == '15'
+  tags: download_falcon_suse12
+
+# Install the downloaded CrowdStrike Falcon package for RedHat
+- name: Installing the CrowdStrike Falcon RPM ...
+  zypper:
+    name: /tmp/crowdstrike_falcon.rpm # Location of the package.
+    state: present # install the package.
+    disable_gpg_check: true
+  become: true
+  tags: install_rpm_package
+
+# Configure the CrowdStrike Falcon service
+- name: Configuring the CrowdStrike Falcon Service with the Customer ID ...
+  shell: "./falconctl -s -f --cid={{ csf_customer_id }}"
+  args:
+    chdir: /opt/CrowdStrike/
+    executable: /bin/sh
+  become: true
+  notify: restart falcon-sensor service
+  tags: configure_service
+
+# Start the CrowdStrike Falcon Service
+- name: starting the CrowdStrike Falcon-sensor service ...
+  service:
+    name: falcon-sensor # Name of the Service.
+    enabled: True # State persist through boot. 
+    state: started # Desired state of the service.
+  become: true
+  tags: start_service
+
+# Delete the downloaded CrowdStrike Falcon package
+- name: Deleting the CrowdStrike Falcon RPM ...
+  file:
+    path: /tmp/crowdstrike_falcon.rpm # Location of the package.
+    state: absent # Delete the package.
+  tags: delete_rpm_package

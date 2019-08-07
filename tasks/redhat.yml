@@ -1,0 +1,88 @@
+---
+# -----------------------------------------------------------------------------
+# name: redhat.yml
+# about: Tasks for deploying the CrowdStrike Falcon agent on RHEL 6 and 7
+#
+# refs:
+# - https://www.crowdstrike.com/blog/tech-center/install-falcon-sensor-for-linux
+# - https://docs.ansible.com/ansible/2.5/modules/get_url_module.html
+# - https://docs.ansible.com/ansible/2.5/modules/package_module.html
+#
+# tags:
+# - download_falcon_rhel6
+# - download_falcon_rhel7
+# - install_rpm_packag
+# - configure_service
+# - delete_rpm_package
+# - start_service
+# -----------------------------------------------------------------------------
+
+# Required by Ansible for RHEL6
+- name: Install libselinux-python
+  yum:
+    name: libselinux-python
+    state: present
+  become: true
+  when: ansible_distribution_major_version == '6'
+
+# Download dependencies for the RPM package
+- name: Install dependencies for the RPM package ...
+  yum:
+    name: libnl # libnl dependency required for falcon-sensor.
+    state: present # Ensure the package is always present after install.
+  become: true
+  tags: falcon_dependencies
+
+# Download the CrowdStrike Falcon agent for RedHat
+- name: Downloading the CrowdStrike Falcon RPM for RHEL7 ...
+  get_url:
+    url: "{{ csf_rhel7.pkg_url }}" # Location of the source package.
+    checksum: "{{ csf_rhel7.pkg_checksum }}" # Post transfer file integrity check.
+    dest: "/tmp/falcon-sensor.rpm" # Final package Destination.
+    mode: 0744 # RWX Owner, R Group, R Other Users.
+  when: (ansible_distribution == 'RedHat' and ansible_distribution_major_version == '7' and ansible_distribution_version >= '7.3') or (ansible_distribution == 'CentOS' and ansible_distribution_major_version == '7')
+  tags: download_falcon_rhel7
+
+# Download the CrowdStrike Falcon agent for RedHat
+- name: Downloading the CrowdStrike Falcon RPM for RHEL6 ...
+  get_url:
+    url: "{{ csf_rhel6.pkg_url }}" # Location of the source package.
+    checksum: "{{ csf_rhel6.pkg_checksum }}" # Post transfer file integrity check.
+    dest: "/tmp/falcon-sensor.rpm" # Final package destination.
+    mode: 0744 # RWX Owner, R Group, R Other Users.
+  when:  (ansible_distribution == 'RedHat' and ansible_distribution_major_version == '6' and (ansible_distribution_version >= '6.7' or ansible_distribution_version == '6.10')) or (ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6')
+  tags: download_falcon_rhel6
+
+# Install the downloaded CrowdStrike Falcon package for RedHat
+- name: Installing the CrowdStrike Falcon RPM ...
+  yum:
+    name: /tmp/falcon-sensor.rpm # Location of the package.
+    state: present # install the package.
+  become: true
+  notify: restart falcon-sensor service
+  tags: install_rpm_package
+
+# Configure the CrowdStrike Falcon service
+- name: Configuring the CrowdStrike Falcon Service with the Customer ID ...
+  shell: "./falconctl -s -f --cid={{ csf_customer_id }}"
+  args:
+    chdir: /opt/CrowdStrike/
+    executable: /bin/sh
+  become: true
+  notify: restart falcon-sensor service
+  tags: configure_service
+
+# Start the CrowdStrike Falcon Service
+- name: Enable the CrowdStrike Falcon Service ...
+  service:
+    name: falcon-sensor # Name of the Service.
+    enabled: true # Specifiy if service should persist after reboot.
+  become: true
+  tags: enable_service
+
+# Delete the downloaded CrowdStrike Falcon package
+- name: Deleting the CrowdStrike Falcon RPM ...
+  file:
+    path: /tmp/falcon-sensor.rpm # Location of the package.
+    state: absent # Delete the package.
+  tags: delete_falcon_package

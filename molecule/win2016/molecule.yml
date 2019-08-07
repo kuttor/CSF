@@ -1,0 +1,33 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+lint:
+  name: yamllint
+platforms:
+  - name: windows2016
+    box: bento/windows-2016
+    memory: 1536
+    groups:
+      - windows
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      windows2016:
+        ansible_connection: winrm
+        ansible_user: vagrant
+        ansible_password: vagrant
+        ansible_port: 55985
+        ansible_winrm_scheme: http
+        ansible_winrm_transport: basic
+        ansible_winrm_server_cert_validation: ignore
+scenario:
+  name: win2016
+verifier:
+  name: testinfra
+  lint:
+    name: flake8

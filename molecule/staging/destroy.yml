@@ -1,0 +1,44 @@
+---
+# TODO: Power off and delete VMs using UUID instead of by name
+- name: Destroy
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  no_log: "{{ not (lookup('env', 'MOLECULE_DEBUG') | bool or molecule_yml.provisioner.log|default(false) | bool) }}"
+
+  tasks:
+    - name: Populate instance config
+      set_fact:
+        instance_conf: "{{ lookup('file', molecule_instance_config) | from_yaml }}"
+
+    # Developer must implement.
+    - name: power off virtual machine
+      vmware_guest_powerstate:
+        hostname:  "{{ molecule_yml.driver.hostname }}"
+        uuid: "{{ item.uuid }}"
+        validate_certs: no
+        state: powered-off
+      delegate_to: localhost
+      with_items: "{{ instance_conf }}"
+
+    - name: remove virtual machine from datastore
+      vmware_guest:
+        hostname:  "{{ molecule_yml.driver.hostname }}"
+        uuid: "{{ item.uuid }}"
+        validate_certs: no
+        state: absent
+      delegate_to: localhost
+      register: server
+      with_items: "{{ instance_conf }}"
+
+    # Mandatory configuration for Molecule to function.
+    - name: Populate instance config
+      set_fact:
+        instance_conf: {}
+      when: server.changed | bool
+
+    - name: Dump instance config
+      copy:
+        content: "{{ instance_conf | to_json | from_json | molecule_to_yaml | molecule_header }}"
+        dest: "{{ molecule_instance_config }}"
+      when: server.changed | bool

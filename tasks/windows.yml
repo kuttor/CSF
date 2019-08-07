@@ -1,0 +1,43 @@
+---
+# -----------------------------------------------------------------------------
+# name: windows.yml
+# about: contains tasks related to deploying the CrowdStrike agent on Windows
+#
+# refs:
+# - https://docs.ansible.com/ansible/2.5/modules/win_get_url_module.html
+# - https://docs.ansible.com/ansible/2.4/win_package_module.html
+# - https://www.crowdstrike.com/blog/tech-center/install-falcon-sensor/
+# - https://docs.ansible.com/ansible/2.4/win_file_module.html
+#
+# tags:
+# - create_temp_dir
+# - download_crowdstrike
+# - install_crowdstrike
+# -----------------------------------------------------------------------------
+
+# Download the CrowdStrike agent for Windows
+- name: Downloading the CrowdStrike agent for Windows ...
+  win_get_url:
+    force: true # Even if file exists, download.
+    validate_certs: false #SSL certificates will not be validated.
+    url: "{{ csf_windows.pkg_url }}" # Full URL to download from.
+    dest: "C:\\Windows\\Temp\\WindowsSensor.exe"  # Path to download to.
+  tags: download_windows_agent
+
+# Install the downloaded CrowdStrike package
+- name: Installing the CrowdStrike agent for Windows ...
+  win_package:
+    creates_service: CrowdStrike Falcon Sensor Service  
+    path: "C:\\Windows\\Temp\\WindowsSensor.exe"
+    product_id: "{{ csf_windows.product_id }}"
+    arguments:
+      - /install
+      - /quiet
+      - "CID={{ csf_customer_id }}"
+  tags: install_windows_agent
+
+# Delete download
+- name: Deleting downloaded installer for Windows ...
+  win_file:
+    path: "C:\\Windows\\Temp\\WindowsSensor.exe"
+    state: absent

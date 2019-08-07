@@ -1,0 +1,8 @@
+---
+- name: Converge
+  hosts: all
+  roles:
+    - role: sles_registration
+      sles_registration_code: 2833B3F062778C
+      sles_registration_email: michael.rosile@cis.ntt.com
+    - role: crowdstrike_falcon

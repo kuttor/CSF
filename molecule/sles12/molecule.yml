@@ -1,0 +1,26 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+lint:
+  name: yamllint
+platforms:
+  - name: sles-12-sp4
+    box: bento/sles-12-sp4
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      sles-15:
+        ansible_python_interpreter: /usr/bin/python
+  lint:
+    name: ansible-lint
+scenario:
+  name: sles12
+verifier:
+  name: testinfra
+  lint:
+    name: flake8

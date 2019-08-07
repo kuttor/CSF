@@ -1,0 +1,6 @@
+.vagrant
+.*.sw[a-z]
+__pycache__
+.DS_Store
+*.pyc
+.vscode

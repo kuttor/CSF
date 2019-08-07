@@ -1,0 +1,34 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+lint:
+  name: yamllint
+platforms:
+  - name: win2012r2
+    box: bento/windows-2012r2
+    cpu: 1
+    memory: 2048
+    groups:
+      - windows
+provisioner:
+  name: ansible
+  inventory:
+    host_vars:
+      win2012r2:
+        ansible_connection: winrm
+        ansible_user: vagrant
+        ansible_password: vagrant
+        ansible_port: 55985
+        ansible_winrm_scheme: http
+        ansible_winrm_transport: basic
+        ansible_winrm_server_cert_validation: ignore
+scenario:
+  name: win2012r2
+verifier:
+  name: testinfra
+  lint:
+    name: flake8

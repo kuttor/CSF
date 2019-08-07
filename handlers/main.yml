@@ -1,0 +1,13 @@
+---
+- name: restart falcon-sensor service
+  become: true  
+  service:
+    name: falcon-sensor
+    state: restarted
+  
+# this may not be possible
+# once installed, service cannot be stopped 
+- name: restart crowdstrike falcon sensor service
+  win_service:
+    name: CrowdStrike Falcon Sensor Service
+    state: restarted

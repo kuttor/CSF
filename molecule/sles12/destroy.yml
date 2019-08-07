@@ -1,0 +1,61 @@
+---
+- name: De-register from SUSE
+  hosts: all
+  become: true
+
+  tasks:
+    - name: get registration status
+      command: /usr/bin/SUSEConnect --status
+      register: registration
+      when:
+        - ansible_distribution == 'SLES'
+        - ansible_distribution_major_version|int >= 12
+      changed_when: false
+
+    - name: deregister server
+      command: /usr/bin/SUSEConnect -d
+      register: deregistration
+      when:
+        - ansible_distribution == 'SLES'
+        - ansible_distribution_major_version|int >= 12
+        - (registration.stdout|from_json)[0].status == 'Registered'
+
+    - name: display deregistration results
+      debug:
+        msg: "{{ deregistration.stdout }}"
+      when:
+        - (registration.stdout|from_json)[0].status == 'Registered'
+
+- name: Destroy
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  # no_log: "{{ molecule_no_log }}"
+  tasks:
+    - name: Destroy molecule instance(s)
+      molecule_vagrant:
+        instance_name: "{{ item.name }}"
+        platform_box: "{{ item.box }}"
+        provider_name: "{{ molecule_yml.driver.provider.name }}"
+        provider_options: "{{ item.provider_options | default(omit) }}"
+        provider_raw_config_args: "{{ item.provider_raw_config_args | default(omit) }}"
+        force_stop: "{{ item.force_stop | default(true) }}"
+
+        state: destroy
+      register: server
+      with_items: "{{ molecule_yml.platforms }}"
+
+    # NOTE(retr0h): Vagrant/VBox sucks and parallelizing instance deletion
+    # causes issues.
+
+    # Mandatory configuration for Molecule to function.
+
+    - name: Populate instance config
+      set_fact:
+        instance_conf: {}
+
+    - name: Dump instance config
+      copy:
+        content: "{{ instance_conf | to_json | from_json | molecule_to_yaml | molecule_header }}"
+        dest: "{{ molecule_instance_config }}"
+      when: server.changed | bool

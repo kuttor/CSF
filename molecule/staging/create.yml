@@ -1,0 +1,161 @@
+---
+- name: Create
+  hosts: all
+  connection: local
+  gather_facts: false
+  no_log: "{{ not lookup('env', 'MOLECULE_DEBUG') | bool }}"
+
+  tasks:
+    - name: Create molecule instance(s)
+      delegate_to: localhost
+      connection: local
+      vmware_guest:
+        cluster: "{{ molecule_yml.driver.cluster }}"
+        customization:
+          domain: "{{ domain }}"
+          hostname: "{{ inventory_hostname }}"
+          timezone: "{{ ntp_timezone }}"
+        datacenter: "{{ molecule_yml.driver.datacenter }}"
+        folder: "{{ molecule_yml.driver.folder }}"
+        name: "{{ inventory_hostname }}"
+        hardware:
+          memory_mb: "{{ vmware_memory_mb | default(omit) }}"
+          num_cpus: "{{ vmware_num_cpus | default(omit) }}"
+        hostname: "{{ molecule_yml.driver.hostname }}"
+        networks:
+        - name: "{{ vmware_portgroup }}"
+          type: dhcp
+        state: poweredon
+        template: "{{ vmware_template }}"
+        validate_certs: "{{ molecule_yml.driver.validate_certs }}"
+        wait_for_ip_address: true
+      register: server
+
+    - name: Populate instance config dict
+      set_fact:
+        instance_conf_dict: {
+          'instance': "{{ inventory_hostname }}",
+          'address': "{{ server.instance.ipv4 }}",
+          'user': "{{ ansible_user }}",
+          'port': "22",
+          'identity_file': "{{ molecule_yml.driver.ssh_identity_file }}",
+          'uuid': "{{ server.instance.hw_product_uuid }}"
+        }
+      register: instance_config_dict
+      when: server.changed | bool
+
+    - name: create instance_conf
+      set_fact:
+        instance_conf: []
+
+    - name: Convert instance config dict to a list
+      set_fact:
+        instance_conf: "{{ instance_conf + [ hostvars[item].instance_config_dict ] }}"
+      when: server.changed | bool
+      with_items: "{{ groups['all'] }}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Dump instance config
+      copy:
+        # NOTE(retr0h): Workaround for Ansible 2.2.
+        #               https://github.com/ansible/ansible/issues/20885
+        content: "{{ instance_conf | map(attribute='ansible_facts.instance_conf_dict') | list | to_json | from_json | molecule_to_yaml | molecule_header }}"
+        dest: "{{ molecule_instance_config }}"
+      when: server.changed | bool
+
+# This is broken into a separate play due to race conditions in known_hosts module when delegated to localhost.
+- hosts: all
+  gather_facts: false
+  vars:
+  serial: 1
+  tasks:
+  - name: Populate instance config
+    set_fact:
+      instance_conf: "{{ lookup('file', molecule_instance_config) | from_yaml }}"
+
+  - name: Create tempfile for host public key fetch
+    delegate_to: localhost
+    connection: local
+    tempfile:
+    register: pubkey_tmp
+    changed_when: false
+
+  - name: Retrieve SSH host public key via VMWare Tools
+    delegate_to: localhost
+    connection: local
+    changed_when: false
+    vmware_guest_file_operation:
+      validate_certs: no
+      hostname: "{{ molecule_yml.driver.hostname }}"
+      cluster: "{{ molecule_yml.driver.cluster }}"
+      datacenter: "{{ molecule_yml.driver.datacenter }}"
+      folder: "{{ molecule_yml.driver.folder }}"
+      vm_id: "{{ item.uuid }}"
+      vm_id_type: uuid
+      vm_username: root
+      vm_password: "{{ lookup('env', 'VM_ROOT_PASSWORD') }}"
+      fetch:
+        src: /etc/ssh/ssh_host_rsa_key.pub
+        dest: "{{ pubkey_tmp.path }}"
+    with_items: "{{ instance_conf }}"
+    when: item.instance == inventory_hostname
+
+  - name: Change ssh connection to vmware tools detected IPv4 address
+    set_fact:
+      ansible_host: "{{ item.address }}"
+    with_items: "{{ instance_conf }}"
+    when: item.instance == inventory_hostname
+
+  - name: Apply host public key to local known_hosts
+    delegate_to: localhost
+    connection: local
+    known_hosts:
+      key: "{{ ansible_host }} {{ lookup('file', pubkey_tmp.path) }}"
+      name: "{{ ansible_host }}"
+
+  - name: Clean up temporary host key file
+    delegate_to: localhost
+    connection: local
+    changed_when: false
+    file:
+      path: "{{ pubkey_tmp.path }}"
+      state: absent
+
+  # Root will not be accessible over SSH once the vm is hardened.
+  # We don't know yet if the ansible ssh user is created and usable.
+  # Faild ssh connections cause the run to abort and I can't find good way to trap it.
+  # So use ssh command to try the connection, retry as root, and set up the user if needed.
+  # This way the playbook invoker can use a username that ships with the template if they know one.
+
+  - name: Validate and repair ansible SSH user
+    block:
+      - name: Attempt SSH connection with normal ansible user.
+        delegate_to: localhost
+        connection: local
+        command: "ssh -oBatchMode=yes {{ ansible_user }}@{{ ansible_host }} sudo whoami"
+        register: validate_ssh
+        failed_when: validate_ssh['stdout'] != 'root'
+        changed_when: false
+    rescue:
+      - name: switch connection to root
+        set_fact:
+          orig_ansible_user: "{{ ansible_user }}"
+          ansible_user: root
+          ansible_ssh_pass: "{{ lookup('env', 'VM_ROOT_PASSWORD') }}"
+      - name: Create ansible user
+        user:
+          name: "{{ orig_ansible_user }}"
+          # Not setting password here.  Use SSH keys.
+      - name: Add local ssh keys to ansible user's authorized_keys
+        authorized_key:
+          user: "{{ orig_ansible_user }}"
+          key: "{{ lookup('file', lookup('env', 'HOME') + '/.ssh/id_rsa.pub' ) }}"
+      - name: Enable passwordless sudo
+        copy:
+          content: "{{ orig_ansible_user }} ALL=(ALL) NOPASSWD: ALL"
+          dest: /etc/sudoers.d/{{orig_ansible_user}}
+      - name: Switch back to ansible user
+        set_fact:
+          ansible_user: "{{ orig_ansible_user }}"
+    # End block: Validate and repair ansible SSH user

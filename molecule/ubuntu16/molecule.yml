@@ -1,0 +1,27 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: vagrant
+  provider:
+    name: virtualbox
+lint:
+  name: yamllint
+platforms:
+  - name: ubuntu16
+    box: bento/ubuntu-16.04
+    interfaces:
+      - auto_config: true
+        network_name: public_network
+        bridge: 'en8: Thunderbolt Ethernet Slot 1'
+        type: dhcp
+provisioner:
+  name: ansible
+  lint:
+    name: ansible-lint
+scenario:
+  name: ubuntu16
+verifier:
+  name: testinfra
+  lint:
+    name: flake8

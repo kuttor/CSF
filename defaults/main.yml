@@ -1,0 +1,65 @@
+---
+# -----------------------------------------------------------------------------
+# name: defauls/main.yml
+# about: Default variables for crowdstrike_falcon
+#
+# vars:
+# - windows.csf_exe: Name of the exe
+# - windows.csf_exe_url: location of the CSF agent exe for Windows
+# --
+# - rhel6.csf_rpm: Name of the RPM
+# - rhel6.csf_rpm_url: Location of the CSF RPM for RHEL 6
+# - rhel6.csf_rpm checksum: Checksum calculation for the CSF RPM for RHEL 6
+# --
+# - rhel7.csf_rpm: Name of the RPM
+# - rhel7.csf_rpm_url: Location of the CSF RPM for RHEL 7
+# - rhel7.csf_rpm_checksum: Checksum calculation for the CSF RPM for RHEL 7
+# --
+# - suse11.csf_rpm: Name of the RPM
+# - suse11.csf_rpm_url: Location of the CSF RPM for Suse 11
+# - suse11.csf_rpm_checksum: Checksum calculation for the CSF RPM for Suse 11
+# --
+# - suse12.csf_rpm: Name of the RPM
+# - suse12.csf_rpm_url: Location of the CSF RPM for Suse 12
+# - suse12.csf_rpm_checksum: Checksum calculation for the CSF RPM for Suse 12
+# -----------------------------------------------------------------------------
+
+# Global
+csf_customer_id: 55E7226886504563B57ABC2CE1676A8F-64
+
+# Windows related variables
+csf_windows:
+  product_id: '{0E85445E-7BA0-4E49-82E2-2E89337F0309}'
+  pkg_url: "https://resource.mcp-services.net/devops/WindowsSensor.exe"
+  pkg_checksum: sha256:eedcea12633c5c97c618900d138a8c1770994b77d95e43194009563a443b2e4b
+
+# RHEL 7 related variables
+csf_rhel7:
+  # pkg_url: "https://resource.mcp-services.net/devops/falcon-sensor-5.10.0-7403.el7.x86_64.rpm"
+  pkg_url: "http://172.16.167.241:8081/repository/YUM/CrowdStrike/falcon-sensor-4.5.0-5015.el7.x86_64.rpm"
+  pkg_url: "http://172.16.167.242:8081/artifactory/example-repo-local/falcon-sensor-4.5.0-5015.el7.x86_64.rpm"
+  #pkg_checksum: sha256:917ef7f41ed2a026e91e9b30c81e6de3f40a713a80dddee12a7cbfdcd3198dc5
+  pkg_checksum: sha256:342895ec1a194a4fd2f84f60ef6ae0371ea172515646c07b303c43247c0c9749
+
+# RHEL 6 related variables
+csf_rhel6:
+  pkg_url: "https://resource.mcp-services.net/devops/falcon-sensor-5.10.0-7403.el6.x86_64.rpm"
+  pkg_checksum: sha256:3f3e0bd396779e0fa20173fbbe060272838ab4995467ff26cf06aaf544ad6c57
+
+# Suse 11 related variables
+csf_suse11:
+  pkg_url: "https://resource.mcp-services.net/devops/falcon-sensor-5.11.0-7503.suse11.x86_64.rpm"
+  pkg_checksum: sha256:654176f8a64f0b41ea6dd20c40249cb69cba5a21dd61b2976ec6da4860df8727
+
+# Suse 12 related variables
+csf_suse12:
+  pkg_url: "https://resource.mcp-services.net/devops/falcon-sensor-5.11.0-7503.suse12.x86_64.rpm"
+  pkg_checksum: sha256:be5557a19a7efbec611076e212e8cedbe6daa05e718c74ec92862d680f09862e
+
+csf_suse15:
+  pkg_url: "https://resource.mcp-services.net/devops/falcon-sensor-5.11.0-7503.suse15.x86_64.rpm"
+  pkg_checksum: sha256:15aba1aada3b5897ec2c435008eab640b96f17f27130f72ab432b8140e7cde23
+
+csf_debian:
+  pkg_url: "https://resource.mcp-services.net/devops/falcon-sensor-5.10.0-7403_amd64.deb"
+  pkg_checksum: sha256:a3b4bdad9730aed458b3177770c38a3e28c38ab638d555e1dd220b62518451cb

@@ -1,0 +1,59 @@
+---
+# -----------------------------------------------------------------------------
+# name: suse.yml
+# about: Tasks for deploying the CrowdStrike Falcon agent on Suse 11 and 12
+#
+# Refs:
+# - https://docs.ansible.com/ansible/2.6/modules/zypper_module.html
+# - https://docs.ansible.com/ansible/2.6/modules/get_url_module.html
+# - https://docs.ansible.com/ansible/2.6/modules/service_module.html
+#
+# Tags:
+# - download_falcon_suse11
+# - download_falcon_suse12
+# - install_rpm_package
+# - start_service
+# - delete_rpm_package
+# -----------------------------------------------------------------------------
+
+# Download the CrowdStrike Falcon agent
+- name: Downloading the CrowdStrike Falcon package for Debian ...
+  get_url:
+    url: '{{ csf_debian.pkg_url }}' # Location of the source package.
+    checksum: '{{ csf_debian.pkg_checksum }}' # Post transfer file integrity check.
+    dest: /tmp/crowdstrike_falcon.deb # Final package Destination.
+    mode: 0644 # R+W Owner, R Group, R Other Users.
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - ansible_distribution_major_version|int >= 16
+  tags: download_falcon_debian
+
+# Install the downloaded CrowdStrike Falcon package
+- name: Installing the CrowdStrike Falcon package for Debian ...
+  apt:
+    deb: /tmp/crowdstrike_falcon.deb # Location of the package.
+  become: true
+  tags: install_deb_package
+
+# Configure the CrowdStrike Falcon service
+- name: Configuring the CrowdStrike Falcon Service with the Customer ID ...
+  shell: "/opt/CrowdStrike/falconctl -s -f --cid={{ csf_customer_id }}"
+  become: true
+  notify: restart falcon-sensor service
+  tags: configure_service
+
+# Start the CrowdStrike Falcon Service
+- name: starting the CrowdStrike Falcon-sensor service ...
+  service:
+    name: falcon-sensor # Name of the Service.
+    enabled: true # State persist through boot. 
+    state: started # Desired state of the service.
+  become: true
+  tags: start_service_debian
+
+# Delete the downloaded CrowdStrike Falcon package
+- name: Deleting the CrowdStrike Falcon package for Debian ...
+  file:
+    path: /tmp/crowdstrike_falcon.deb # Location of the package.
+    state: absent # Delete the package.
+  tags: delete_deb_package

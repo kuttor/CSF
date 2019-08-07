@@ -1,0 +1,9 @@
+galaxy_info:
+  author: Andrew Kuttor
+  description: Installs CrowdStrike Falcon on Windows and RHEL6/7 machines.
+  company: NTT Cloud Infrastructure Services
+  license: BSD
+  min_ansible_version: 1.2
+  galaxy_tags: []
+
+dependencies: []
